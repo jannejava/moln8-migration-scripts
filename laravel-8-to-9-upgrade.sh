@@ -128,6 +128,28 @@ validate_laravel_version() {
     fi
 }
 
+# Function to ensure auth.json is in .gitignore
+ensure_auth_json_ignored() {
+    print_step "Ensuring auth.json is in .gitignore"
+
+    if [ "$DRY_RUN" = true ]; then
+        print_warning "DRY RUN - Would check .gitignore for auth.json"
+        return
+    fi
+
+    if [ -f ".gitignore" ]; then
+        if ! grep -q "^auth.json$" .gitignore; then
+            echo "auth.json" >> .gitignore
+            print_success "Added auth.json to .gitignore"
+        else
+            print_info "auth.json already in .gitignore"
+        fi
+    else
+        echo "auth.json" > .gitignore
+        print_success "Created .gitignore with auth.json"
+    fi
+}
+
 # Function to update Kernel.php
 update_kernel() {
     print_step "Updating HTTP Kernel"
@@ -366,28 +388,31 @@ move_database_seeders() {
         return
     fi
 
-    if [ "$DRY_RUN" = true ]; then
-        print_warning "DRY RUN - Would move seeders:"
-        echo "  - database/seeds → database/seeders"
-        echo "  - Update namespaces"
+    # Check if seeders already exists
+    if [ -d "database/seeders" ]; then
+        print_warning "database/seeders already exists, skipping migration"
         return
     fi
 
-    # Create seeders directory if it doesn't exist
-    mkdir -p database/seeders
+    if [ "$DRY_RUN" = true ]; then
+        print_warning "DRY RUN - Would move seeders:"
+        echo "  - mv database/seeds database/seeders"
+        echo "  - Update namespaces in all files"
+        return
+    fi
 
-    # Move and update seeders
-    for file in database/seeds/*.php; do
+    # Rename the directory
+    mv database/seeds database/seeders
+    print_success "Renamed database/seeds → database/seeders"
+
+    # Update namespaces in all PHP files
+    for file in database/seeders/*.php; do
         if [ -f "$file" ]; then
-            filename=$(basename "$file")
-
-            # Update namespace in the file
-            sed 's/namespace Database\\Seeds;/namespace Database\\Seeders;/g' "$file" > "database/seeders/$filename"
-            print_success "Moved and updated $filename"
+            sed -i.bak 's/namespace Database\\Seeds;/namespace Database\\Seeders;/g' "$file"
+            rm -f "$file.bak"
+            print_success "Updated namespace in $(basename "$file")"
         fi
     done
-
-    print_info "Original files kept in database/seeds (you can remove them after testing)"
 }
 
 # Function to update composer.json
@@ -704,6 +729,7 @@ main() {
     # Run upgrade steps
     check_prerequisites
     validate_laravel_version
+    ensure_auth_json_ignored
 
     # Code updates
     update_kernel
