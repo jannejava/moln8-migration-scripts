@@ -2,6 +2,35 @@
 
 Collection of migration scripts for upgrading Laravel and related packages across all sites.
 
+## Prerequisites
+
+### `update-to-satis.sh` - Update Repository Configuration
+
+**Run this first before `composer install`** on any site project. This script updates the site to use our Satis server instead of the old Packagist repository.
+
+The script will:
+- Update `composer.json` to use `https://satis.eastwest.se`
+- Create `auth.json` with Satis credentials
+- Add `auth.json` to `.gitignore`
+- Clear composer cache
+- Validate the configuration
+
+**Usage:**
+```bash
+# Update current directory
+/Users/janne/Sites/kunder/migration-scripts/update-to-satis.sh
+
+# Update a specific site
+/Users/janne/Sites/kunder/migration-scripts/update-to-satis.sh /path/to/site
+
+# Update multiple sites from a file
+/Users/janne/Sites/kunder/migration-scripts/update-to-satis.sh --batch sites.txt
+```
+
+After running this script, `composer install` will work correctly.
+
+---
+
 ## Available Scripts
 
 ### `laravel-8-to-9-upgrade.sh`
@@ -82,6 +111,34 @@ Upgrades Laravel 10 sites to Laravel 11, including:
 ```
 
 **⚠️ WARNING:** Laravel 11 has critical breaking changes in database migrations. Always test on a database copy first!
+
+---
+
+### `voyager-security-upgrade.sh`
+
+Replaces abandoned `tcg/voyager` with security-patched `eastwest/voyager` fork.
+
+**Security Fixes:**
+- Removed Compass (CVE-2025-32931, CVE-2024-55415, CVE-2024-55416)
+- Hardened file upload with extension blacklist (CVE-2024-55417)
+
+**Fork:** https://github.com/jannejava/eastwest-voyager
+
+**Usage:**
+```bash
+# Preview all sites
+./voyager-security-upgrade.sh --dry-run --all
+
+# Upgrade all sites
+./voyager-security-upgrade.sh --all --update
+
+# Upgrade specific sites
+./voyager-security-upgrade.sh ogonfonden.se sydon.se --update
+```
+
+**⚠️ IMPORTANT:** Rebuild Satis before running this script!
+
+---
 
 ## Workflow
 
